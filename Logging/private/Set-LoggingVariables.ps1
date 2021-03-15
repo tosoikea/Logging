@@ -1,11 +1,15 @@
+<#
+.SYNOPSIS
+This helper function initializes all internal data structures.
+
+.DESCRIPTION
+This private function must only be called once, when the module is initially loaded to initialize the necessary logging variables.
+#>
 function Set-LoggingVariables {
+    [CmdletBinding()]
+    param()
 
-    #Already setup
-    if ($Script:Logging -and $Script:LevelNames) {
-        return
-    }
-
-    Write-Verbose -Message 'Setting up vars'
+    Write-Verbose -Message ('{0} :: Initializing logging variables' -f $MyInvocation.MyCommand)
 
     $Script:NOTSET = 0
     $Script:DEBUG = 10

@@ -18,5 +18,4 @@ foreach ($Function in $AllFunctions) {
 Export-ModuleMember -Function $PublicFunctions.BaseName
 
 Set-LoggingVariables
-
 Start-LoggingManager
