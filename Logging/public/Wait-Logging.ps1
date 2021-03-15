@@ -19,7 +19,7 @@ function Wait-Logging {
     param()
 
     #This variable is initiated inside Start-LoggingManager
-    if (!(Get-Variable -Name "LoggingEventQueue" -ErrorAction Ignore)) {
+    if (-not (Get-Variable -Name "LoggingEventQueue" -ErrorAction Ignore)) {
         return
     }
 
@@ -37,7 +37,7 @@ function Wait-Logging {
         $difference = [datetime]::Now - $start
         if ($difference.seconds -gt 30) {
             Write-Error -Message ("{0} :: Wait timeout." -f $MyInvocation.MyCommand) -ErrorAction SilentlyContinue
-            break;
+            break
         }
     }
 }

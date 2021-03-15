@@ -15,7 +15,7 @@ function Start-LoggingManager {
     }
 
     # Importing variables into runspace
-    foreach ($sessionVariable in 'ScriptRoot', 'LevelNames', 'Logging', 'LoggingEventQueue', 'TargetsInitSync') {
+    foreach ($sessionVariable in 'ScriptRoot', 'LevelNames', 'Logging', 'LoggingEventQueue', 'TargetsInitSync', 'LoggingMutex') {
         $Value = Get-Variable -Name $sessionVariable -ErrorAction Continue -ValueOnly
         Write-Verbose "Importing variable $sessionVariable`: $Value into runspace"
         $v = New-Object System.Management.Automation.Runspaces.SessionStateVariableEntry -ArgumentList $sessionVariable, $Value, '', ([System.Management.Automation.ScopedItemOptions]::AllScope)
@@ -44,28 +44,53 @@ function Start-LoggingManager {
         $TargetsInitSync.Set(); # Signal to the parent runspace that logging targets have been loaded
 
         foreach ($Log in $Script:LoggingEventQueue.GetConsumingEnumerable()) {
-            if ($Script:Logging.EnabledTargets) {
-                $ParentHost.NotifyBeginApplication()
+            [bool] $hasHandle = $false
+            $mutex = $Script:LoggingMutex
 
-                try {
-                    #Enumerating through a collection is intrinsically not a thread-safe procedure
-                    for ($targetEnum = $Script:Logging.EnabledTargets.GetEnumerator(); $targetEnum.MoveNext(); ) {
-                        [string] $LoggingTarget = $targetEnum.Current.key
-                        [hashtable] $TargetConfiguration = $targetEnum.Current.Value
-                        $Logger = [scriptblock] $Script:Logging.Targets[$LoggingTarget].Logger
+            try{
+                try{
+                    # We wait 5s
+                    $hasHandle = $mutex.WaitOne(5000, $false)
 
-                        $targetLevelNo = Get-LevelNumber -Level $TargetConfiguration.Level
+                    if (-not $hasHandle){
+                        $ParentHost.UI.WriteErrorLine("ERROR: Discarding log entry as mutex could not be obtained.")
+                        continue
+                    }
 
-                        if ($Log.LevelNo -ge $targetLevelNo) {
-                            Invoke-Command -ScriptBlock $Logger -ArgumentList @($Log.PSObject.Copy(), $TargetConfiguration)
+                    if ($Script:Logging.EnabledTargets.Count -eq 0){
+                        continue
+                    }
+
+                    $ParentHost.NotifyBeginApplication()
+                    try {
+                        for ($targetEnum = $Script:Logging.EnabledTargets.GetEnumerator(); $targetEnum.MoveNext(); ) {
+                            [string] $target = $targetEnum.Current.key
+                            $logger = [scriptblock] $Script:Logging.Targets[$target].Logger
+
+                            for ($confEnum = $targetEnum.Current.Value.GetEnumerator(); $confEnum.MoveNext();){
+                                [hashtable] $configuration = $confEnum.Current.Value
+
+                                $levelNr = Get-LevelNumber -Level $configuration.Level
+                                if ($Log.LevelNo -ge $levelNr) {
+                                    Invoke-Command -ScriptBlock $Logger -ArgumentList @($Log.PSObject.Copy(), $configuration)
+                                }
+                            }
                         }
                     }
+                    catch {
+                        $ParentHost.UI.WriteErrorLine($_)
+                    }
+                    finally {
+                        $ParentHost.NotifyEndApplication()
+                    }
+                }catch [System.Threading.AbandonedMutexException]{
+                    $ParentHost.UI.WriteErrorLine(("{0} :: The loggings mutex was abandoned." -f $MyInvocation.MyCommand))
+                    $hasHandle = $true
                 }
-                catch {
-                    $ParentHost.UI.WriteErrorLine($_)
-                }
-                finally {
-                    $ParentHost.NotifyEndApplication()
+            }
+            finally{
+                if($hasHandle){
+                    $mutex.ReleaseMutex()
                 }
             }
         }

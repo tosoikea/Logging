@@ -41,15 +41,15 @@ function Add-LoggingLevel {
         [string] $LevelName
     )
 
-    if ($Level -notin $LevelNames.Keys -and $LevelName -notin $LevelNames.Keys) {
-        $LevelNames[$Level] = $LevelName.ToUpper()
-        $LevelNames[$LevelName] = $Level
-    } elseif ($Level -in $LevelNames.Keys -and $LevelName -notin $LevelNames.Keys) {
-        $LevelNames.Remove($LevelNames[$Level]) | Out-Null
-        $LevelNames[$Level] = $LevelName.ToUpper()
-        $LevelNames[$LevelNames[$Level]] = $Level
-    } elseif ($Level -notin $LevelNames.Keys -and $LevelName -in $LevelNames.Keys) {
-        $LevelNames.Remove($LevelNames[$LevelName]) | Out-Null
-        $LevelNames[$LevelName] = $Level
+    if ($Level -notin $Script:LevelNames.Keys -and $LevelName -notin $Script:LevelNames.Keys) {
+        $Script:LevelNames[$Level] = $LevelName.ToUpper()
+        $Script:LevelNames[$LevelName] = $Level
+    } elseif ($Level -in $Script:LevelNames.Keys -and $LevelName -notin $Script:LevelNames.Keys) {
+        $Script:LevelNames.Remove($Script:LevelNames[$Level]) | Out-Null
+        $Script:LevelNames[$Level] = $LevelName.ToUpper()
+        $Script:LevelNames[$Script:LevelNames[$Level]] = $Level
+    } elseif ($Level -notin $Script:LevelNames.Keys -and $LevelName -in $Script:LevelNames.Keys) {
+        $Script:LevelNames.Remove($Script:LevelNames[$LevelName]) | Out-Null
+        $Script:LevelNames[$LevelName] = $Level
     }
 }

@@ -33,20 +33,48 @@ function Set-LoggingDefaultLevel {
     }
 
     End {
-        $Script:Logging.Level = $PSBoundParameters.Level
-        $Script:Logging.LevelNo = Get-LevelNumber -Level $PSBoundParameters.Level
 
-        # Setting level on already configured targets
-        foreach ($Target in $Script:Logging.EnabledTargets.Values) {
-            if ($Target.ContainsKey('Level')) {
-                $Target['Level'] = $Script:Logging.Level
+        [bool] $hasHandle = $false
+        $mutex = $Script:LoggingMutex
+
+        try{
+            try{
+                # We wait 5s
+                $hasHandle = $mutex.WaitOne(5000, $false)
+
+                if (-not $hasHandle){
+                    Write-Warning -Message ("{0} :: The default level could not be changed." -f $MyInvocation.MyCommand)
+                    return
+                }
+
+                $Script:Logging.Level = $PSBoundParameters.Level
+                $Script:Logging.LevelNo = Get-LevelNumber -Level $Script:Logging.Level
+
+                # Setting format on already configured targets
+                for($targetEnum = $Script:Logging.EnabledTargets.GetEnumerator(); $targetEnum.MoveNext();){
+                    for($identifierEnum = $targetEnum.Current.Value.GetEnumerator(); $identifierEnum.MoveNext();){
+                        $target = $identifierEnum.Current.Value
+
+                        if ($target.ContainsKey('Level')) {
+                            $target['Level'] = $Script:Logging.Level
+                        }
+                    }
+                }
+
+                # Setting format on available targets
+                foreach ($target in $Script:Logging.Targets.Values) {
+                    if ($target.Defaults.ContainsKey('Level')) {
+                        $target.Defaults.Level.Default = $Script:Logging.Level
+                    }
+                }
+            }catch [System.Threading.AbandonedMutexException]{
+                Write-Warning -Message ("{0} :: The logging mutex was abandoned." -f $MyInvocation.MyCommand)
+                $hasHandle = $true
             }
         }
-
-        # Setting level on available targets
-        foreach ($Target in $Script:Logging.Targets.Values) {
-            if ($Target.Defaults.ContainsKey('Level')) {
-                $Target.Defaults.Level.Default = $Script:Logging.Level
+        finally{
+            if($hasHandle){
+                $mutex.ReleaseMutex()
             }
         }
     }

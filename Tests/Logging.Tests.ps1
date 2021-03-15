@@ -35,6 +35,7 @@ InModuleScope Logging {
     Describe -Tags Build 'Internal Vars' {
         It 'sets up internal variables' {
             Test-Path Variable:Logging | Should Be $true
+            Test-Path Variable:LoggingMutex | Should Be $true
             Test-Path Variable:Defaults | Should Be $true
             Test-Path Variable:LevelNames | Should Be $true
             Test-Path Variable:LoggingRunspace | Should Be $true
@@ -151,11 +152,15 @@ InModuleScope Logging {
 
         It 'change the logging level of available targets' {
             Add-LoggingTarget -Name Console
-            (Get-LoggingTarget -Name Console).Level | Should Be 'INFO'
+            (Get-LoggingTarget -Name Console).ContainsKey("Console") | Should Be $true
+            (Get-LoggingTarget -Name Console)["Console"].ContainsKey("__DEFAULT__") | Should Be $true
+            (Get-LoggingTarget -Name Console)["Console"]["__DEFAULT__"].Level | Should Be 'INFO'
         }
         It 'change the logging level of already configured targets' {
             Set-LoggingDefaultLevel -Level DEBUG
-            (Get-LoggingTarget -Name Console).Level | Should Be 'DEBUG'
+            (Get-LoggingTarget -Name Console).ContainsKey("Console") | Should Be $true
+            (Get-LoggingTarget -Name Console)["Console"].ContainsKey("__DEFAULT__") | Should Be $true
+            (Get-LoggingTarget -Name Console)["Console"]["__DEFAULT__"].Level | Should Be 'DEBUG'
         }
 
     }
@@ -197,14 +202,20 @@ InModuleScope Logging {
             $NewFormat = '[%{level:-7}] %{message}'
             Add-LoggingTarget -Name Console
             Set-LoggingDefaultFormat -Format $NewFormat
-            (Get-LoggingTarget -Name Console).Format | Should Be $NewFormat
+
+            (Get-LoggingTarget -Name Console).ContainsKey("Console") | Should Be $true
+            (Get-LoggingTarget -Name Console)["Console"].ContainsKey("__DEFAULT__") | Should Be $true
+            (Get-LoggingTarget -Name Console)["Console"]["__DEFAULT__"].Format | Should Be $NewFormat
         }
 
         It 'change the default format of available targets' {
             $NewFormat = '[%{level:-7}] %{message}'
             Set-LoggingDefaultFormat -Format $NewFormat
             Add-LoggingTarget -Name Console
-            (Get-LoggingTarget -Name Console).Format | Should Be $NewFormat
+
+            (Get-LoggingTarget -Name Console).ContainsKey("Console") | Should Be $true
+            (Get-LoggingTarget -Name Console)["Console"].ContainsKey("__DEFAULT__") | Should Be $true
+            (Get-LoggingTarget -Name Console)["Console"]["__DEFAULT__"].Format | Should Be $NewFormat
         }
     }
 

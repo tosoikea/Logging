@@ -1,8 +1,14 @@
 function Merge-DefaultConfig {
     param(
+        [Parameter(Mandatory)]
         [string] $Target,
         [hashtable] $Configuration
     )
+
+    # prevent nullpointer
+    if (-not $Configuration){
+        $Configuration = @{}
+    }
 
     $DefaultConfiguration = $Script:Logging.Targets[$Target].Defaults
     $ParamsRequired = $Script:Logging.Targets[$Target].ParamsRequired

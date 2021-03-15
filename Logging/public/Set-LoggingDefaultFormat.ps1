@@ -35,19 +35,47 @@ function Set-LoggingDefaultFormat {
     )
 
     Wait-Logging
-    $Script:Logging.Format = $Format
 
-    # Setting format on already configured targets
-    foreach ($Target in $Script:Logging.EnabledTargets.Values) {
-        if ($Target.ContainsKey('Format')) {
-            $Target['Format'] = $Script:Logging.Format
+    [bool] $hasHandle = $false
+    $mutex = $Script:LoggingMutex
+
+    try{
+        try{
+            # We wait 5s
+            $hasHandle = $mutex.WaitOne(5000, $false)
+
+            if (-not $hasHandle){
+                Write-Warning -Message ("{0} :: The default format could not be changed." -f $MyInvocation.MyCommand)
+                return
+            }
+
+            $Script:Logging.Format = $Format
+
+            # Setting format on already configured targets
+            for($targetEnum = $Script:Logging.EnabledTargets.GetEnumerator(); $targetEnum.MoveNext();){
+                for($identifierEnum = $targetEnum.Current.Value.GetEnumerator(); $identifierEnum.MoveNext();){
+                    $target = $identifierEnum.Current.Value
+
+                    if ($target.ContainsKey('Format')) {
+                        $target['Format'] = $Script:Logging.Format
+                    }
+                }
+            }
+
+            # Setting format on available targets
+            foreach ($target in $Script:Logging.Targets.Values) {
+                if ($target.Defaults.ContainsKey('Format')) {
+                    $target.Defaults.Format.Default = $Script:Logging.Format
+                }
+            }
+        }catch [System.Threading.AbandonedMutexException]{
+            Write-Warning -Message ("{0} :: The logging mutex was abandoned." -f $MyInvocation.MyCommand)
+            $hasHandle = $true
         }
     }
-
-    # Setting format on available targets
-    foreach ($Target in $Script:Logging.Targets.Values) {
-        if ($Target.Defaults.ContainsKey('Format')) {
-            $Target.Defaults.Format.Default = $Script:Logging.Format
+    finally{
+        if($hasHandle){
+            $mutex.ReleaseMutex()
         }
     }
 }

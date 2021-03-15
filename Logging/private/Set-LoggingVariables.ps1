@@ -45,7 +45,13 @@ function Set-LoggingVariables {
         Format         = $Defaults.Format
         CallerScope    = $Defaults.CallerScope
         CustomTargets  = [String]::Empty
-        Targets        = ([System.Collections.Concurrent.ConcurrentDictionary[string, hashtable]]::new([System.StringComparer]::OrdinalIgnoreCase))
-        EnabledTargets = ([System.Collections.Concurrent.ConcurrentDictionary[string, hashtable]]::new([System.StringComparer]::OrdinalIgnoreCase))
+        ## Contains all known targets
+        Targets        = ([System.Collections.Generic.Dictionary[string, hashtable]]::new([System.StringComparer]::OrdinalIgnoreCase))
+        EnabledTargets = ([System.Collections.Generic.Dictionary[string, [System.Collections.Generic.Dictionary[string, hashtable]]]]::new([System.StringComparer]::OrdinalIgnoreCase))
     }))
+
+    <#
+        We use these mutexes to synchronize the access to the Logging variable
+    #>
+    New-Variable -Name LoggingMutex -Scope Script -Option Constant -Value ([System.Threading.Mutex]::new($false, "SCRIPT_LOGGING_MUTEX"))
 }
