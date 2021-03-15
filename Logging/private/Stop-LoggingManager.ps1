@@ -2,6 +2,7 @@ function Stop-LoggingManager {
     param ()
 
     $Script:LoggingEventQueue.CompleteAdding()
+    Wait-Logging
     $Script:LoggingEventQueue.Dispose()
 
     [void] $Script:LoggingRunspace.Powershell.EndInvoke($Script:LoggingRunspace.Handle)

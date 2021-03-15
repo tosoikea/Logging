@@ -4,7 +4,7 @@ function Start-LoggingManager {
         [TimeSpan]$ConsumerStartupTimeout = "00:00:10"
     )
 
-    New-Variable -Name LoggingEventQueue    -Scope Script -Value ([System.Collections.Concurrent.BlockingCollection[hashtable]]::new(100))
+    New-Variable -Name LoggingEventQueue    -Scope Script -Value ([System.Collections.Concurrent.BlockingCollection[hashtable]]::new(1000))
     New-Variable -Name LoggingRunspace      -Scope Script -Option ReadOnly -Value ([hashtable]::Synchronized(@{ }))
     New-Variable -Name TargetsInitSync      -Scope Script -Option ReadOnly -Value ([System.Threading.ManualResetEventSlim]::new($false))
 
@@ -106,7 +106,6 @@ function Start-LoggingManager {
 
         if ($Module) {
             $Module.Invoke({
-                Wait-Logging
                 Stop-LoggingManager
             })
         }
